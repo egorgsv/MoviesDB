@@ -9,7 +9,7 @@ namespace MoviesDB
     {
         public DbSet<Movie> Movies { get; set; }
         public DbSet<Actor> Actors { get; set; }
-        //public DbSet<Tag> Tags { get; set; }
+        public DbSet<Tag> Tags { get; set; }
 
         public ApplicationContext()
         {
@@ -19,7 +19,7 @@ namespace MoviesDB
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
+        { 
             modelBuilder.Entity<MovieActor>()
                 .HasKey(t => new { t.ActorNconstId, t.MovieTconstId });
 
@@ -29,9 +29,22 @@ namespace MoviesDB
                 .HasForeignKey(ma => ma.ActorNconstId);
 
             modelBuilder.Entity<MovieActor>()
-                .HasOne(ma => ma.Actor)
+                .HasOne(ma => ma.Movie)
                 .WithMany(m => m.MovieActors)
                 .HasForeignKey(ma => ma.MovieTconstId);
+
+            modelBuilder.Entity<MovieTag>()
+                .HasKey(t => new { t.TagId, t.MovieTconstId });
+
+            modelBuilder.Entity<MovieTag>()
+                .HasOne(mt => mt.Tag)
+                .WithMany(t => t.MovieTags)
+                .HasForeignKey(mt => mt.TagId);
+
+            modelBuilder.Entity<MovieTag>()
+                .HasOne(mt => mt.Movie)
+                .WithMany(m => m.MovieTags)
+                .HasForeignKey(mt => mt.MovieTconstId);
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

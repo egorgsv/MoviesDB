@@ -13,6 +13,11 @@ namespace MoviesDB
 
         public string Name { get; set; }
 
+        public Actor()
+        {
+            MovieActors = new HashSet<MovieActor>();
+        }
+
         public Actor(string nconstId, string name)
         {
             NconstId = nconstId;
@@ -25,13 +30,9 @@ namespace MoviesDB
             Name = name;
         }
 
-        public Actor()
-        {
-            MovieActors = new HashSet<MovieActor>();
-        }
+        
         //private string primaryProfession;
         //private string knownForTitles;
-        //private List<Movie> titles;
         //private string[] profession;
 
 

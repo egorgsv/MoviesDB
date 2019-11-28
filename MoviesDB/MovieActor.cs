@@ -5,7 +5,6 @@ namespace MoviesDB
 {
     public class MovieActor
     {
-        [Key]
         public string ActorNconstId { get; set; }
         public Actor Actor { get; set; }
 
