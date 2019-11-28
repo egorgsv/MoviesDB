@@ -28,6 +28,7 @@ namespace MoviesDB
             MovieActors = new HashSet<MovieActor>();
             MovieTags = new HashSet<MovieTag>();
         }
+
         [Key]
         public string TconstId { get; set; }
 
