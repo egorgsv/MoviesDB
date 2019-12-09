@@ -11,13 +11,6 @@ namespace MoviesDB
         public DbSet<Actor> Actors { get; set; }
         public DbSet<Tag> Tags { get; set; }
 
-        public ApplicationContext()
-        {
-            Database.EnsureDeleted(); //удаление бд
-            Database.EnsureCreated();
-            // myDbContext.Database.Migrate(); //нельзя использовать с EnsureCreated()
-        }
-
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         { 
             modelBuilder.Entity<MovieActor>()
