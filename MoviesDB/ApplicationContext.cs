@@ -10,6 +10,9 @@ namespace MoviesDB
         public DbSet<Movie> Movies { get; set; }
         public DbSet<Actor> Actors { get; set; }
         public DbSet<Tag> Tags { get; set; }
+        
+        public DbSet<links_IMDB_MovieLens> links_IMDB_MovieLens { get; set; }
+        
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         { 
@@ -43,14 +46,9 @@ namespace MoviesDB
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             optionsBuilder.UseSqlite("Filename=Movies.db");
-            //optionsBuilder.UseLoggerFactory(MyLoggerFactory);
+            
         }
 
-        // устанавливаем фабрику логгера
-        //public static readonly ILoggerFactory MyLoggerFactory = LoggerFactory.Create(builder =>
-        //{
-        //    builder.AddProvider(new MyLoggerFactory());    // указываем наш провайдер логгирования
-        //});
     } 
     
 }
