@@ -10,8 +10,6 @@ namespace MoviesDB
 
         public string MovieTconstId { get; set; }
         public Movie Movie { get; set; }
-        public MovieActor()
-        {
-        }
+        
     }
 }

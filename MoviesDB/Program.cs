@@ -15,18 +15,18 @@ namespace MoviesDB
         {
             using (ApplicationContext db = new ApplicationContext())
             {
-                
-                
-                Console.WriteLine("Обновить базу данных? да/нет");
-                bool reload = Console.ReadLine().Equals("да");
-                
+
+
+                Console.WriteLine("Would you like to reload database? (y/n)");
+                bool reload = Console.ReadLine().Equals("y");
+
                 Stopwatch stopwatch2 = Stopwatch.StartNew();
-                if (reload)
+                if (false/*reload*/)
                 {
-                    Console.WriteLine("Загрузка...");
+                    Console.WriteLine("Creating new Database. Please, don't stop the program.");
                     db.Database.EnsureDeleted();
                     db.Database.EnsureCreated();
-                    
+
                     //movies
                     string MovieCodes_IMDB = @"/Users/egorgusev/ml-latest/MovieCodes_IMDB.tsv";
                     Dictionary<string, Movie> DictMovieCodes_IMDB = new Dictionary<string, Movie>();
@@ -57,21 +57,24 @@ namespace MoviesDB
 
                             if (DictMovieCodes_IMDB.ContainsKey($"tt{a[1]}"))
                             {
-                                var link = new links_IMDB_MovieLens() {movieId = a[0], TconstId = $"tt{a[1]}"};
+                                var link = new links_IMDB_MovieLens()
+                                    {movieId = a[0], TconstId = $"tt{a[1]}", tmdbId = a[2]};
                                 db.links_IMDB_MovieLens.Add(link);
                                 DictMovieCodes_IMDB[$"tt{a[1]}"].MovieId = a[0];
+                                DictMovieCodes_IMDB[$"tt{a[1]}"].tmdbId = a[2];
                                 DictMovieCodes_IMDB[$"tt{a[1]}"].link = link;
                             }
                         }
                     }
-                    
-                    
+
                     foreach (var movie in DictMovieCodes_IMDB)
                     {
-                        db.Movies.AddRange(movie.Value);
+                        db.Movies.Add(movie.Value);
                     }
+
                     db.SaveChanges();
-                    Console.WriteLine("Фильмы успешно сохранены");
+                    Console.WriteLine("Movies downloaded successfully");
+
                     
                     string ActorsDirectorsNames_IMDB = @"/Users/egorgusev/ml-latest/ActorsDirectorsNames_IMDB.txt";
                     using (StreamReader sr = new StreamReader(ActorsDirectorsNames_IMDB))
@@ -84,107 +87,104 @@ namespace MoviesDB
                             db.Actors.Add(new Actor() {NconstId = a[0], Name = a[1]});
                         }
                     }
+                    db.SaveChanges();
+
+
+                    string actorsDirectorsCodes_IMDB =
+                        @"/Users/egorgusev/ml-latest/ActorsDirectorsCodes_IMDB.tsv";
+                    Dictionary<string, string> dictMovieActors = new Dictionary<string, string>();
+                    using (StreamReader sr = new StreamReader(actorsDirectorsCodes_IMDB))
+                    {
+                        string line;
+                        sr.ReadLine(); //первая строка с названиями 
+                        while ((line = sr.ReadLine()) != null)
+                        {
+                            var a = line.Split("	");
+                            if (a[3] == "actor")
+                            {
+                                if (db.Movies.Find(a[0]) != null && db.Actors.Find(a[2]) != null && !dictMovieActors.ContainsKey($"{a[0]}{a[2]}")) 
+                                {
+                                    var actor = db.Actors.Find(a[2]);
+                                    var movie = db.Movies.Find(a[0]);
+                                    var movieactor = new MovieActor ()
+                                        {ActorNconstId = actor.NconstId, MovieTconstId = movie.TconstId};
+                                    dictMovieActors.Add($"{a[0]}{a[2]}", a[2]);
+                                    movie.MovieActors.Add(movieactor);
+                                    
+                                }
+                            }
+                        }
+                    }
+                    db.SaveChanges();
+                    Console.WriteLine("Actors downloaded successfully");
+
+                    //загружаем теги
+                    string TagCodes_MovieLens = @"/Users/egorgusev/ml-latest/TagCodes_MovieLens.csv";
+                    using (StreamReader sr = File.OpenText(TagCodes_MovieLens))
+                    {
+                        string line;
+                        sr.ReadLine(); //первая строка с названиями 
+                        while ((line = sr.ReadLine()) != null)
+                        {
+                            var a = line.Split(",");
+                            db.Tags.Add(new Tag {tagId = a[0], tag = a[1]});
+                        }
+                    }
 
                     db.SaveChanges();
 
-                    Parallel.Invoke(
-                    () =>
+                    string TagScores_MovieLens = @"/Users/egorgusev/ml-latest/TagScores_MovieLens.csv";
+                    using (StreamReader sr = File.OpenText(TagScores_MovieLens))
                     {
-                        string actorsDirectorsCodes_IMDB =
-                            @"/Users/egorgusev/ml-latest/ActorsDirectorsCodes_IMDB.tsv";
-                        using (StreamReader sr = new StreamReader(actorsDirectorsCodes_IMDB))
+                        string line;
+                        sr.ReadLine(); //первая строка с названиями 
+                        while ((line = sr.ReadLine()) != null)
                         {
-                            string line;
-                            sr.ReadLine(); //первая строка с названиями 
-                            while ((line = sr.ReadLine()) != null)
+                            var a = line.Split(",");
+                            if (Double.Parse(a[2], CultureInfo.InvariantCulture) > 0.5)
                             {
-                                var a = line.Split("	");
-                                if (a[3] == "actor")
+                                Tag tag = db.Tags.Find(a[1]); //ищем тег
+                                if (db.links_IMDB_MovieLens.Find(a[0]) != null)
                                 {
-                                    Actor actor = db.Actors.Find(a[2]);
-                                    if (DictMovieCodes_IMDB.ContainsKey(a[0]))
-                                    {
-                                        Movie movie = db.Movies.Find(a[0]); 
-                                        movie.MovieActors.Add(new MovieActor
-                                            {ActorNconstId = actor.NconstId, MovieTconstId = movie.TconstId});
-                                    }
-                            
+                                    Movie movie = db.Movies.Find(db.links_IMDB_MovieLens.Find(a[0]).TconstId);
+                                    movie.MovieTags.Add(
+                                        new MovieTag {MovieTconstId = movie.TconstId, TagId = tag.tagId});
                                 }
-                            }
-                        }
-                        db.SaveChanges();
-                        Console.WriteLine("Актёры успешно сохранены");
-                    },
-                    () =>
-                    {
-                        //загружаем теги
-                        string TagCodes_MovieLens = @"/Users/egorgusev/ml-latest/TagCodes_MovieLens.csv";
-                        using (StreamReader sr = File.OpenText(TagCodes_MovieLens))
-                        {
-                            string line;
-                            sr.ReadLine(); //первая строка с названиями 
-                            while ((line = sr.ReadLine()) != null)
-                            {
-                                var a = line.Split(",");
-                                db.Tags.Add(new Tag {tagId = a[0], tag = a[1]});
-                            }
-                        }
 
-                        db.SaveChanges();
-
-                        string TagScores_MovieLens = @"/Users/egorgusev/ml-latest/TagScores_MovieLens.csv";
-                        using (StreamReader sr = File.OpenText(TagScores_MovieLens))
-                        {
-                            string line;
-                            sr.ReadLine(); //первая строка с названиями 
-                            while ((line = sr.ReadLine()) != null)
-                            {
-                                var a = line.Split(",");
-                                if (Double.Parse(a[2], CultureInfo.InvariantCulture) > 0.5)
-                                {
-                                    Tag tag = db.Tags.Find(a[1]); //ищем тег
-                                    if (db.links_IMDB_MovieLens.Find(a[0])!=null)
-                                    {
-                                        Movie movie = db.Movies.Find(db.links_IMDB_MovieLens.Find(a[0]).TconstId);
-                                        movie.MovieTags.Add( new MovieTag {MovieTconstId = movie.TconstId, TagId = tag.tagId});
-                                    }
-                            
-                                }
                             }
                         }
-                        db.SaveChanges();
-                        Console.WriteLine("Теги успешно сохранены");
-                    },
-                    () =>
-                    {
-                        string Ratings_IMDB = @"/Users/egorgusev/ml-latest/Ratings_IMDB.tsv";
-                        using (StreamReader sr = File.OpenText(Ratings_IMDB))
-                        {
-                            string line;
-                            sr.ReadLine(); //первая строка с названиями 
-                            while ((line = sr.ReadLine()) != null)
-                            {
-                                var a = line.Split("	");
-                                if (DictMovieCodes_IMDB.ContainsKey(a[0]))
-                                {
-                                    db.Movies.Find(a[0]).Rating = a[1]; 
-                                }
-                            }
-                        } 
                     }
-                    );
+
+                    db.SaveChanges();
+                    Console.WriteLine("Tags downloaded successfully");
+
+                    string Ratings_IMDB = @"/Users/egorgusev/ml-latest/Ratings_IMDB.tsv";
+                    using (StreamReader sr = File.OpenText(Ratings_IMDB))
+                    {
+                        string line;
+                        sr.ReadLine(); //первая строка с названиями 
+                        while ((line = sr.ReadLine()) != null)
+                        {
+                            var a = line.Split("	");
+                            if (DictMovieCodes_IMDB.ContainsKey(a[0]))
+                            {
+                                db.Movies.Find(a[0]).Rating = a[1];
+                            }
+                        }
+                    }
                 }
 
                 db.SaveChanges();
 
-                Console.WriteLine("Загрузка завершена");
+                Console.WriteLine("Done.");
                 stopwatch2.Stop();
-                Console.WriteLine($"Секунды: {stopwatch2.ElapsedMilliseconds / 1000}");
-                Console.WriteLine($"Минуты: {stopwatch2.ElapsedMilliseconds / 60000}");
+                Console.WriteLine($"Seconds: {stopwatch2.ElapsedMilliseconds / 1000}");
+                Console.WriteLine($"Minutes: {stopwatch2.ElapsedMilliseconds / 60000}");
+
                 String command;
                 do
                 {
-                    Console.WriteLine("Введите комманду (film, actor, tag, exit):");
+                    Console.WriteLine("Input comand (film, person, tag, exit):");
                     command = Console.ReadLine();
 
                     if (command.Equals("exit"))
@@ -194,7 +194,7 @@ namespace MoviesDB
 
                     if (command.Equals("film"))
                     {
-                        Console.WriteLine("Введите название фильма:");
+                        Console.WriteLine("Enter the title:");
                         string title = Console.ReadLine();
                         var movies = (from m in db.Movies
                             where m.Title == title
@@ -206,7 +206,7 @@ namespace MoviesDB
                             {
                                 Console.WriteLine($" Reting: {m.Rating}");
                             }
-                            
+
                             var actors = m.MovieActors.Select(ma => ma.Actor).ToList();
                             foreach (Actor a in actors)
                                 Console.WriteLine($" Actor: {a.Name}");
@@ -215,15 +215,16 @@ namespace MoviesDB
                                 Console.WriteLine($" Tag: {t.tag}");
                             Console.WriteLine($"____________________________");
                         }
-                        Console.WriteLine("Показать похожие?");
-                        if (Console.ReadLine().Equals("да"))
+
+                        Console.WriteLine("Show similar movies? (y/n)");
+                        if (Console.ReadLine().Equals("y"))
                         {
                             foreach (var m in movies)
                             {
                                 Console.WriteLine($"\nTitle: {m.Title}");
-                                Console.WriteLine(" Похожие:");
-                                var simular = m.similar();
-                                foreach (var VARIABLE in simular)
+                                Console.WriteLine(" Similar:");
+                                var similar = m.similar();
+                                foreach (var VARIABLE in similar)
                                 {
                                     Console.WriteLine($"\n   Title: {VARIABLE.Title}");
                                 }
@@ -232,9 +233,9 @@ namespace MoviesDB
                     }
                     else if (command.Equals("actor"))
                     {
-                        Console.WriteLine("Введите имя актёра:");
+                        Console.WriteLine("Enter the name:");
                         string name = Console.ReadLine();
-                        List<Actor> actors = (from a in db.Actors.AsParallel()
+                        List<Actor> actors = (from a in db.Actors
                             where a.Name == name
                             select a).ToList();
                         foreach (Actor a in actors)
@@ -243,16 +244,17 @@ namespace MoviesDB
                             var movies = a.MovieActors.Select(ma => ma.Movie).ToList();
                             foreach (Movie m in movies)
                             {
-                                Console.WriteLine($" Movie: {m.Title} (rating: {m.Rating}");
+                                Console.WriteLine($" Movie: {m.Title} (rating: {m.Rating})");
                             }
+
                             Console.WriteLine($"____________________________");
                         }
                     }
                     else if (command.Equals("tag"))
                     {
-                        Console.WriteLine("Введите тег:");
+                        Console.WriteLine("Enter the tag:");
                         string tag = Console.ReadLine();
-                        List<Tag> tags = (from t in db.Tags.AsParallel()
+                        List<Tag> tags = (from t in db.Tags
                             where t.tag == tag
                             select t).ToList();
                         foreach (Tag t in tags)
@@ -260,16 +262,15 @@ namespace MoviesDB
                             Console.WriteLine($"\nTag: {t.tag}");
                             var movies = t.MovieTags.Select(mt => mt.Movie).ToList();
                             foreach (Movie m in movies)
-                                Console.WriteLine($" Movie: {m.Title} (rating: {m.Rating}");
+                                Console.WriteLine($" Movie: {m.Title} (rating: {m.Rating})");
                             Console.WriteLine($"____________________________");
                         }
                     }
                 } while (!command.Equals("exit"));
 
-                Console.WriteLine("Нажмите любую кнопку.");
+                Console.WriteLine("Press any key.");
                 Console.ReadKey();
             }
         }
     }
-    
 }

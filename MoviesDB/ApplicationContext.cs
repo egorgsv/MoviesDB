@@ -10,12 +10,18 @@ namespace MoviesDB
         public DbSet<Movie> Movies { get; set; }
         public DbSet<Actor> Actors { get; set; }
         public DbSet<Tag> Tags { get; set; }
-        
         public DbSet<links_IMDB_MovieLens> links_IMDB_MovieLens { get; set; }
+        
         
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         { 
+            var options =
+                new DbContextOptionsBuilder<ApplicationContext>()
+                    .UseSqlite("Filename=Movies.db")
+                    .EnableSensitiveDataLogging()
+                    .Options;
+            
             modelBuilder.Entity<MovieActor>()
                 .HasKey(t => new { t.ActorNconstId, t.MovieTconstId });
 
@@ -41,12 +47,13 @@ namespace MoviesDB
                 .HasOne(mt => mt.Movie)
                 .WithMany(m => m.MovieTags)
                 .HasForeignKey(mt => mt.MovieTconstId);
+            
         }
+        
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.UseSqlite("Filename=Movies.db");
-            
+            optionsBuilder.UseSqlite("Filename=Movies.db").EnableSensitiveDataLogging();
         }
 
     } 

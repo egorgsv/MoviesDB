@@ -8,6 +8,6 @@ namespace MoviesDB
         public string movieId { get; set; }
         public string TconstId { get; set; }
         
-        public Movie Movie { get; set; }
+        public string tmdbId { get; set; }
     }
 }
